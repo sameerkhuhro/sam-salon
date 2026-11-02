@@ -1,0 +1,166 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    color-scheme: light;
+  }
+
+  body {
+    @apply bg-ivory text-charcoal font-body antialiased;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight text-charcoal;
+  }
+
+  :focus-visible {
+    outline: 2px solid #C7A66A;
+    outline-offset: 3px;
+  }
+
+  img {
+    @apply select-none;
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-page px-5 sm:px-8 lg:px-12;
+  }
+
+  .section {
+    @apply py-20 md:py-28;
+  }
+
+  /* Display headings – editorial serif */
+  .h-display {
+    @apply text-4xl sm:text-5xl md:text-6xl lg:text-[4.75rem] font-normal leading-[1.05] tracking-tight;
+  }
+
+  /* Section headings */
+  .h-section {
+    @apply text-3xl sm:text-4xl md:text-5xl font-normal leading-[1.12];
+  }
+
+  /* Form fields */
+  .field {
+    @apply w-full border border-charcoal/20 bg-white/70 px-4 py-3.5 text-base text-charcoal outline-none transition-all duration-200 placeholder:text-mutedBrown/50;
+    @apply focus:border-gold focus:bg-white focus:ring-1 focus:ring-gold/30;
+  }
+
+  .field-error {
+    @apply mt-1.5 text-xs text-red-600;
+  }
+
+  /* Gold divider line */
+  .gold-rule {
+    @apply block h-px w-10 bg-gold;
+  }
+
+  /* Premium card border */
+  .card-border {
+    @apply border border-charcoal/10 hover:border-gold/60 transition-colors duration-300;
+  }
+
+  /* Hide scrollbar for Chrome, Safari, Opera, Edge, Firefox */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* ─── Hero entry animations ───────────────────────────────────────── */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.hero-in > * {
+  animation: rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.hero-in > *:nth-child(1) { animation-delay: 0.05s; }
+.hero-in > *:nth-child(2) { animation-delay: 0.15s; }
+.hero-in > *:nth-child(3) { animation-delay: 0.25s; }
+.hero-in > *:nth-child(4) { animation-delay: 0.35s; }
+.hero-in > *:nth-child(5) { animation-delay: 0.45s; }
+
+.hero-img-in {
+  animation: slide-in-right 1s cubic-bezier(0.2, 0.7, 0.2, 1) 0.2s both;
+}
+
+/* ─── Nav underline active state ──────────────────────────────────── */
+.nav-link {
+  position: relative;
+}
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 0;
+  height: 1.5px;
+  background: #24211F;
+  transition: width 0.25s ease;
+}
+.nav-link:hover::after,
+.nav-link.active::after {
+  width: 100%;
+}
+
+/* ─── Custom scrollbar ────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 7px;
+}
+::-webkit-scrollbar-track {
+  background: #F4EEE5;
+}
+::-webkit-scrollbar-thumb {
+  background: #C7A66A;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #B89558;
+}
+
+/* ─── Reduced motion ──────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .hero-in > *,
+  .hero-img-in {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}

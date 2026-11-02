@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    color-scheme: light;
+  }
+
+  body {
+    @apply bg-ivory text-charcoal font-body antialiased;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight text-charcoal;
+  }
+
+  :focus-visible {
+    outline: 2px solid #C7A66A;
+    outline-offset: 2px;
+  }
+}
+
+/* Custom WebKit Scrollbar */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: #F4EEE5;
+}
+::-webkit-scrollbar-thumb {
+  background: #C7A66A;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #B89558;
+}

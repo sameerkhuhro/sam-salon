@@ -55,61 +55,57 @@ export async function getAvailability({ staffId, date, durationMin = 45 }) {
 }
 
 export async function createBooking(data) {
-  try {
-    const res = await fetch(`${API_BASE}/appointments`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        serviceId: data.serviceId,
-        serviceName: data.serviceName,
-        price: data.price,
-        durationMin: data.durationMin,
-        staffId: data.staffId,
-        staffName: data.staffName,
-        date: data.date,
-        time: data.time,
-        customerName: data.name,
-        customerPhone: data.phone,
-        customerEmail: data.email || '',
-        notes: data.notes || '',
-      }),
-    })
+  const customerName = (data.customerName || data.name || '').trim()
+  const customerPhone = (data.customerPhone || data.phone || '').trim()
+  const customerEmail = (data.customerEmail || data.email || '').trim()
 
-    const result = await res.json().catch(() => ({}))
-
-    if (!res.ok) {
-      throw new Error(result.message || `Booking failed with status ${res.status}`)
-    }
-
-    if (result.appointment) {
-      // Also cache locally for offline reference
-      const all = readLocal()
-      const ref = result.ref || result.appointment.ref
-      all[ref] = result.appointment
-      try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(all))
-      } catch {}
-      return result.appointment
-    }
-  } catch (err) {
-    // If it's a conflict or validation error, re-throw so the UI can notify the user
-    if (err.message && (err.message.includes('booked') || err.message.includes('unavailable') || err.message.includes('required') || err.message.includes('closed') || err.message.includes('shift') || err.message.includes('leave'))) {
-      throw err
-    }
-    console.warn('[API] Backend booking submission error, using local fallback:', err.message)
+  const payload = {
+    serviceId: data.serviceId,
+    serviceIds: Array.isArray(data.serviceIds) && data.serviceIds.length > 0
+      ? data.serviceIds
+      : data.serviceId
+      ? data.serviceId.split(',').map((s) => s.trim()).filter(Boolean)
+      : [],
+    services: Array.isArray(data.services) ? data.services : [],
+    serviceName: data.serviceName,
+    price: data.price,
+    durationMin: data.durationMin,
+    staffId: data.staffId,
+    staffName: data.staffName,
+    date: data.date,
+    time: data.time,
+    customerName,
+    customerPhone,
+    customerEmail,
+    notes: data.notes || '',
   }
 
-  // Local fallback persistence only if server is completely unreachable
-  const all = readLocal()
-  const ref = `SH-${data.date.replaceAll('-', '')}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
-  const localAppt = { ...data, ref, status: 'pending' }
-  all[ref] = localAppt
-  try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(all))
-  } catch {}
-  return localAppt
+  const res = await fetch(`${API_BASE}/appointments`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const result = await res.json().catch(() => ({}))
+
+  if (!res.ok) {
+    throw new Error(result.message || `Booking failed with status ${res.status}`)
+  }
+
+  if (result.appointment) {
+    // Also cache locally in client browser for convenience
+    const all = readLocal()
+    const ref = result.ref || result.appointment.ref
+    all[ref] = result.appointment
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(all))
+    } catch {}
+    return result.appointment
+  }
+
+  throw new Error('Server did not return a valid confirmed appointment')
 }
 
 export async function getLiveServices() {

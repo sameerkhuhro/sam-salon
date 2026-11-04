@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { Lock, Mail, Eye, EyeOff, ArrowRight, ShieldCheck, ArrowLeft } from 'lucide-react'
+import { Lock, Mail, Eye, EyeOff, ArrowRight, ArrowLeft } from 'lucide-react'
 import { useAdminAuth } from '../context/AdminAuthContext'
 
 export default function AdminLogin() {
-  const [email, setEmail] = useState('admin@salonhub.pk')
-  const [password, setPassword] = useState('SalonHub@2026!')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -102,7 +102,8 @@ export default function AdminLogin() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@salonhub.pk"
+                  placeholder="Enter admin email"
+                  autoComplete="username"
                   required
                   className="w-full rounded-sm border border-charcoal/20 bg-ivory/50 py-3 pl-10 pr-4 font-body text-sm text-charcoal outline-none transition-all focus:border-gold focus:bg-white focus:ring-1 focus:ring-gold/30"
                 />
@@ -126,7 +127,8 @@ export default function AdminLogin() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="Enter password"
+                  autoComplete="current-password"
                   required
                   className="w-full rounded-sm border border-charcoal/20 bg-ivory/50 py-3 pl-10 pr-11 font-body text-sm text-charcoal outline-none transition-all focus:border-gold focus:bg-white focus:ring-1 focus:ring-gold/30"
                 />
@@ -153,16 +155,6 @@ export default function AdminLogin() {
               </button>
             </div>
           </form>
-
-          {/* Development Demo Notice */}
-          <div className="mt-8 rounded-lg border border-charcoal/10 bg-ivory p-4 text-[11px] text-mutedBrown">
-            <div className="flex items-center gap-1.5 font-semibold text-charcoal mb-1">
-              <ShieldCheck size={14} className="text-gold-deep" />
-              <span>PBL Assignment Demo Credentials:</span>
-            </div>
-            <p>Email: <code className="font-mono text-charcoal font-semibold">admin@salonhub.pk</code></p>
-            <p className="mt-0.5">Password: <code className="font-mono text-charcoal font-semibold">SalonHub@2026!</code></p>
-          </div>
 
         </div>
 

@@ -1,11 +1,17 @@
+import path from 'path'
+import { fileURLToPath } from 'url'
 import dotenv from 'dotenv'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+// Ensure server/.env is loaded reliably regardless of working directory
+dotenv.config({ path: path.resolve(__dirname, '../.env') })
 dotenv.config()
 
 import express from 'express'
 import cors from 'cors'
 import morgan from 'morgan'
-import path from 'path'
-import { fileURLToPath } from 'url'
 import cookieParser from 'cookie-parser'
 import { connectDB } from './config/db.js'
 import { seedDatabase } from './seed/seedData.js'
@@ -23,9 +29,6 @@ import settingRoutes from './routes/settingRoutes.js'
 import dashboardRoutes from './routes/dashboardRoutes.js'
 
 import { notFound, errorHandler } from './middleware/errorHandler.js'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
 
 const app = express()
 const PORT = process.env.PORT || 5000
@@ -92,10 +95,21 @@ const startServer = async () => {
   try {
     await connectDB()
 
-    // Automatically check and seed initial setup if required
-    await seedDatabase().catch((err) => {
-      console.warn('[Server Warning] Auto-seed error (non-fatal):', err.message)
-    })
+    // Automatically check and seed initial setup if required:
+    // - In production: preserves existing startup auto-seed behavior
+    // - In local development: disabled by default unless explicitly enabled via AUTO_SEED=true
+    const shouldAutoSeed =
+      process.env.NODE_ENV === 'production'
+        ? true
+        : process.env.AUTO_SEED === 'true'
+
+    if (shouldAutoSeed) {
+      await seedDatabase().catch((err) => {
+        console.warn('[Server Warning] Auto-seed error (non-fatal):', err.message)
+      })
+    } else {
+      console.log('[Seed] Auto-seeding disabled for local development (set AUTO_SEED=true in server/.env to enable).')
+    }
 
     app.listen(PORT, () => {
       console.log(`=================================================`)

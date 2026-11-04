@@ -35,6 +35,19 @@ const appointmentSchema = new mongoose.Schema(
       required: [true, 'Service ID is required'],
       ref: 'Service',
     },
+    serviceIds: {
+      type: [String],
+      default: [],
+    },
+    services: [
+      {
+        id: String,
+        name: String,
+        price: Number,
+        durationMin: Number,
+        category: String,
+      },
+    ],
     serviceName: {
       type: String,
       required: [true, 'Service name is required'],

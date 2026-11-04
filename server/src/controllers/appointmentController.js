@@ -57,6 +57,7 @@ export const getDayName = (dateString) => {
 export const validateAppointmentBooking = async ({
   staffId,
   serviceId,
+  serviceIds = [],
   date,
   time,
   durationMin,
@@ -100,8 +101,13 @@ export const validateAppointmentBooking = async ({
   }
 
   // 2. Fetch Staff Member
+  const cleanStaffId = typeof staffId === 'string' ? staffId.trim() : (staffId ? staffId.toString() : '')
   const staffMember = await Staff.findOne({
-    $or: [{ _id: staffId.match(/^[0-9a-fA-F]{24}$/) ? staffId : null }, { legacyId: staffId }, { id: staffId }],
+    $or: [
+      { _id: /^[0-9a-fA-F]{24}$/.test(cleanStaffId) ? cleanStaffId : null },
+      { legacyId: cleanStaffId },
+      { id: cleanStaffId },
+    ],
   })
 
   if (!staffMember) {
@@ -115,17 +121,49 @@ export const validateAppointmentBooking = async ({
     }
   }
 
-  // 3. Verify Staff Service Qualification
-  const isAssigned =
-    !serviceId ||
-    !staffMember.serviceIds ||
-    staffMember.serviceIds.length === 0 ||
-    staffMember.serviceIds.some((sId) => sId.toString() === serviceId.toString())
+  // 3. Verify Staff Service Qualification (supports single, multiple, legacyIds, or ObjectIds)
+  let targetIds = []
+  if (Array.isArray(serviceIds) && serviceIds.length > 0) {
+    targetIds = serviceIds.filter(Boolean).map((s) => s.toString().trim())
+  } else if (serviceId) {
+    targetIds = serviceId.includes(',')
+      ? serviceId.split(',').map((s) => s.trim()).filter(Boolean)
+      : [serviceId.toString().trim()]
+  }
+
+  let isAssigned = true
+  if (targetIds.length > 0 && staffMember.serviceIds && staffMember.serviceIds.length > 0) {
+    const objectIdCandidates = targetIds.filter((id) => /^[0-9a-fA-F]{24}$/.test(id))
+    const matchedServices = await Service.find({
+      $or: [
+        { _id: { $in: objectIdCandidates } },
+        { legacyId: { $in: targetIds } },
+        { id: { $in: targetIds } },
+      ],
+    })
+
+    const staffServiceIdStrings = staffMember.serviceIds.map((s) => s.toString())
+
+    isAssigned = targetIds.every((tId) => {
+      // Direct string match against staff serviceIds
+      if (staffServiceIdStrings.includes(tId)) return true
+
+      // Match via resolved Service doc (either _id or legacyId)
+      const svc = matchedServices.find(
+        (s) => s._id.toString() === tId || s.legacyId === tId || s.id === tId
+      )
+      if (!svc) return true // If custom treatment not cataloged, do not block appointment
+      return (
+        staffServiceIdStrings.includes(svc._id.toString()) ||
+        (svc.legacyId && staffServiceIdStrings.includes(svc.legacyId))
+      )
+    })
+  }
 
   if (!isAssigned) {
     return {
       valid: false,
-      error: `${staffMember.name} is not assigned to perform this specific treatment.`,
+      error: `${staffMember.name} is not assigned to perform all selected treatments.`,
     }
   }
 
@@ -221,7 +259,19 @@ export const getAppointments = async (req, res) => {
       filter.status = status
     }
     if (staffId && staffId !== 'all') {
-      filter.staffId = staffId
+      const cleanStaffId = typeof staffId === 'string' ? staffId.trim() : (staffId ? staffId.toString() : '')
+      const staffDoc = await Staff.findOne({
+        $or: [
+          { _id: /^[0-9a-fA-F]{24}$/.test(cleanStaffId) ? cleanStaffId : null },
+          { legacyId: cleanStaffId },
+          { id: cleanStaffId },
+        ],
+      })
+      if (staffDoc) {
+        filter.staffId = { $in: [staffDoc._id.toString(), staffDoc.legacyId, cleanStaffId].filter(Boolean) }
+      } else {
+        filter.staffId = cleanStaffId
+      }
     }
     if (date) {
       filter.date = date
@@ -283,6 +333,8 @@ export const createAppointment = async (req, res) => {
   try {
     const {
       serviceId,
+      serviceIds,
+      services: incomingServices,
       serviceName,
       price,
       durationMin,
@@ -298,38 +350,69 @@ export const createAppointment = async (req, res) => {
       paymentStatus,
     } = req.body
 
-    if (!serviceId || !staffId || !date || !time || !customerName || !customerPhone) {
+    if ((!serviceId && (!serviceIds || serviceIds.length === 0)) || !staffId || !date || !time || !customerName || !customerPhone) {
       return res.status(400).json({
         success: false,
         message: 'Required booking parameters missing (service, specialist, date, time, customer details).',
       })
     }
 
-    // Verify Service details
-    let finalServiceName = serviceName
-    let finalPrice = price
-    let finalDuration = Number(durationMin) || 45
-
-    const svc = await Service.findOne({
-      $or: [{ _id: serviceId.match(/^[0-9a-fA-F]{24}$/) ? serviceId : null }, { legacyId: serviceId }],
-    })
-
-    if (svc) {
-      if (svc.status !== 'active') {
+    // Optional email validation: only validate format if a non-empty email is actually provided
+    let cleanEmail = ''
+    if (customerEmail && typeof customerEmail === 'string' && customerEmail.trim()) {
+      cleanEmail = customerEmail.trim()
+      if (!/^\S+@\S+\.\S+$/.test(cleanEmail)) {
         return res.status(400).json({
           success: false,
-          message: `The treatment "${svc.name}" is currently inactive or archived.`,
+          message: 'Please enter a valid email address or leave it blank.',
         })
       }
-      finalServiceName = svc.name
-      finalPrice = svc.price
-      finalDuration = svc.durationMin
+    }
+
+    // Process services and multi-service combinations
+    let finalServiceId = serviceId || (Array.isArray(serviceIds) && serviceIds[0]) || ''
+    let finalServiceIds = Array.isArray(serviceIds) && serviceIds.length > 0 ? serviceIds : (finalServiceId ? [finalServiceId] : [])
+    let finalServiceName = serviceName
+    let finalPrice = Number(price) || 0
+    let finalDuration = Number(durationMin) || 45
+    let finalServicesList = Array.isArray(incomingServices) ? incomingServices : []
+
+    // If single service lookup is applicable
+    if (finalServiceIds.length === 1 && !serviceName) {
+      const singleIdStr = String(finalServiceId)
+      const svc = await Service.findOne({
+        $or: [
+          { _id: /^[0-9a-fA-F]{24}$/.test(singleIdStr) ? singleIdStr : null },
+          { legacyId: singleIdStr },
+          { id: singleIdStr },
+        ],
+      })
+
+      if (svc) {
+        if (svc.status !== 'active') {
+          return res.status(400).json({
+            success: false,
+            message: `The treatment "${svc.name}" is currently inactive or archived.`,
+          })
+        }
+        finalServiceName = svc.name
+        finalPrice = svc.price
+        finalDuration = svc.durationMin
+        finalServicesList = [{
+          id: svc.id || svc._id.toString(),
+          name: svc.name,
+          price: svc.price,
+          durationMin: svc.durationMin,
+          category: svc.category,
+        }]
+      }
     }
 
     // Validate Scheduling Constraints & Double-Booking
     const validation = await validateAppointmentBooking({
       staffId,
-      serviceId: svc?._id?.toString() || serviceId,
+      serviceId: finalServiceId,
+      serviceIds: finalServiceIds,
       date,
       time,
       durationMin: finalDuration,
@@ -345,19 +428,19 @@ export const createAppointment = async (req, res) => {
     const finalStaff = validation.staff
     const finalStaffName = finalStaff ? finalStaff.name : staffName || 'Specialist'
 
-    // Upsert Customer profile
+    // Upsert Customer profile (email is strictly optional)
     let customer = await Customer.findOne({ phone: customerPhone.trim() })
     if (customer) {
       customer.totalVisits += 1
       customer.totalSpent += Number(finalPrice || 0)
       customer.lastVisit = new Date()
-      if (customerEmail && !customer.email) customer.email = customerEmail.trim()
+      if (cleanEmail && !customer.email) customer.email = cleanEmail
       await customer.save()
     } else {
       customer = await Customer.create({
         name: customerName.trim(),
         phone: customerPhone.trim(),
-        email: customerEmail ? customerEmail.trim() : '',
+        email: cleanEmail || '',
         totalVisits: 1,
         totalSpent: Number(finalPrice || 0),
         lastVisit: new Date(),
@@ -375,8 +458,10 @@ export const createAppointment = async (req, res) => {
       customerId: customer._id,
       customerName: customerName.trim(),
       customerPhone: customerPhone.trim(),
-      customerEmail: customerEmail ? customerEmail.trim() : '',
-      serviceId: svc?._id?.toString() || serviceId,
+      customerEmail: cleanEmail || '',
+      serviceId: finalServiceId,
+      serviceIds: finalServiceIds,
+      services: finalServicesList,
       serviceName: finalServiceName || 'Salon Service',
       price: numericPrice,
       amountPaid: initialAmountPaid,

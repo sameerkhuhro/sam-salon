@@ -478,7 +478,16 @@ export default function AdminAppointments() {
               <div className="rounded-lg border border-charcoal/10 p-3.5">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-mutedBrown">Treatment</span>
                 <p className="font-display text-base font-medium text-charcoal mt-1">{detailModalAppt.serviceName}</p>
-                <p className="text-xs text-taupe mt-0.5">{duration(detailModalAppt.durationMin)}</p>
+                {Array.isArray(detailModalAppt.services) && detailModalAppt.services.length > 1 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {detailModalAppt.services.map((s, idx) => (
+                      <span key={s.id || idx} className="rounded bg-gold/15 px-2 py-0.5 text-[10px] font-medium text-charcoal">
+                        {s.name} ({money(s.price)})
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs text-taupe mt-1">{duration(detailModalAppt.durationMin)}</p>
               </div>
 
               <div className="rounded-lg border border-charcoal/10 p-3.5">

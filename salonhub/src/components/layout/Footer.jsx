@@ -127,6 +127,18 @@ export default function Footer() {
       <div className="border-t border-charcoal-light py-6 text-center text-xs text-taupe">
         <div className="container-page flex flex-col items-center justify-between gap-3 sm:flex-row">
           <p>© {new Date().getFullYear()} {site.name}. All rights reserved.</p>
+          <p className="text-taupe/90">
+            Designed &amp; Developed by{' '}
+            <a
+              href="https://www.linkedin.com/in/sameerkhuhro"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-ivory font-medium transition-colors hover:text-gold hover:underline underline-offset-4 decoration-gold/50"
+            >
+              Sameer Khuhro
+            </a>
+          </p>
+         
           <p className="text-taupe/80">Premium Unisex Salon · Khairpur Mir's, Sindh, Pakistan</p>
         </div>
       </div>

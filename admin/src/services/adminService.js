@@ -450,27 +450,39 @@ class AdminService {
       const totalAppointments = appts.length
       const completed = appts.filter((a) => a.status === 'completed').length
       const cancelled = appts.filter((a) => a.status === 'cancelled').length
-      const completionRate = totalAppointments > 0 ? `${Math.round((completed / totalAppointments) * 100)}%` : '92%'
-      const cancellationRate = totalAppointments > 0 ? `${Math.round((cancelled / totalAppointments) * 100)}%` : '4%'
+      const noShow = appts.filter((a) => a.status === 'no-show' || a.status === 'no_show').length
+      const completionRate = totalAppointments > 0 ? Math.round((completed / totalAppointments) * 100) : 92
+      const cancellationRate = totalAppointments > 0 ? Math.round((cancelled / totalAppointments) * 100) : 4
 
-      const totalPaid = payments.filter((p) => p.status === 'paid').reduce((s, p) => s + p.amount, 0)
+      const totalPaid = payments.filter((p) => p.status === 'paid').reduce((s, p) => s + (Number(p.amount) || 0), 0)
       const avgBookingValue = totalAppointments > 0 ? Math.round(totalPaid / (totalAppointments || 1)) : 2800
 
-      const stylistLeaderboard = staff.map((st) => {
-        const stAppts = appts.filter((a) => a.staffId === st.id)
-        const stRev = stAppts.reduce((sum, a) => sum + (a.price || 0), 0)
+      const staffWorkload = staff.map((st) => {
+        const stAppts = appts.filter(
+          (a) =>
+            a.staffId === st.id ||
+            a.staffId === st._id ||
+            a.staff?._id === st.id ||
+            a.staffName === st.name
+        )
+        const stRev = stAppts.reduce((sum, a) => sum + (Number(a.price) || 0), 0)
         return {
           id: st.id,
+          staffName: st.name,
           name: st.name,
           role: st.role,
           avatar: st.avatar,
+          appointmentCount: stAppts.length,
           appointments: stAppts.length,
           revenue: stRev,
         }
-      }).sort((a, b) => b.revenue - a.revenue)
+      }).sort((a, b) => b.appointmentCount - a.appointmentCount)
 
       return {
         totalAppointments,
+        completed,
+        cancelled,
+        noShow,
         completionRate,
         cancellationRate,
         avgBookingValue,
@@ -481,13 +493,17 @@ class AdminService {
           { month: 'Sep', revenue: 340000, bookings: 110 },
           { month: 'Oct', revenue: totalPaid || 385000, bookings: totalAppointments || 128 },
         ],
-        stylistLeaderboard,
+        staffWorkload,
+        stylistLeaderboard: staffWorkload,
       }
     } catch {
       return {
         totalAppointments: 24,
-        completionRate: '92%',
-        cancellationRate: '4%',
+        completed: 22,
+        cancelled: 1,
+        noShow: 1,
+        completionRate: 92,
+        cancellationRate: 4,
         avgBookingValue: 2800,
         monthlyBreakdown: [
           { month: 'Jun', revenue: 210000, bookings: 68 },
@@ -496,6 +512,7 @@ class AdminService {
           { month: 'Sep', revenue: 340000, bookings: 110 },
           { month: 'Oct', revenue: 385000, bookings: 128 },
         ],
+        staffWorkload: [],
         stylistLeaderboard: [],
       }
     }

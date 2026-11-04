@@ -78,7 +78,7 @@ export default function AdminHeader({ onOpenMobile }) {
         {/* Branch pill */}
         <div className="hidden md:flex items-center gap-1.5 rounded-md bg-charcoal/5 px-3 py-1 font-body text-xs text-charcoal font-medium">
           <span className="h-2 w-2 rounded-full bg-emerald-500" />
-          <span>SAM SALON Flagship</span>
+          <span>SAM SALON • KHAIRPUR</span>
         </div>
       </div>
     </header>

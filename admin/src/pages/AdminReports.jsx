@@ -33,7 +33,13 @@ export default function AdminReports() {
     )
   }
 
-  const maxMonthRev = Math.max(...reports.monthlyBreakdown.map((m) => m.revenue), 200000)
+  const monthlyList = Array.isArray(reports?.monthlyBreakdown) ? reports.monthlyBreakdown : []
+  const maxMonthRev = Math.max(...monthlyList.map((m) => Number(m.revenue) || 0), 200000)
+  const staffWorkloadList = Array.isArray(reports?.staffWorkload)
+    ? reports.staffWorkload
+    : Array.isArray(reports?.stylistLeaderboard)
+    ? reports.stylistLeaderboard
+    : []
 
   return (
     <div className="space-y-8">
@@ -52,25 +58,29 @@ export default function AdminReports() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Bookings Managed"
-          value={reports.totalAppointments}
+          value={reports.totalAppointments ?? 0}
           subtitle="All historical reservations"
           icon={Calendar}
         />
         <StatCard
           title="Completion Rate"
-          value={`${reports.completionRate}%`}
-          subtitle={`${reports.completed} sessions fulfilled`}
+          value={
+            typeof reports.completionRate === 'number'
+              ? `${reports.completionRate}%`
+              : reports.completionRate || '0%'
+          }
+          subtitle={`${reports.completed ?? 0} sessions fulfilled`}
           icon={CheckCircle2}
         />
         <StatCard
           title="Cancelled Sessions"
-          value={reports.cancelled}
+          value={reports.cancelled ?? 0}
           subtitle="Prior notice cancellations"
           icon={XCircle}
         />
         <StatCard
           title="No-Show Rate"
-          value={reports.noShow}
+          value={reports.noShow ?? 0}
           subtitle="Missed client arrivals"
           icon={AlertTriangle}
         />
@@ -84,25 +94,25 @@ export default function AdminReports() {
               Monthly Revenue Growth (PKR)
             </h3>
             <p className="font-body text-xs text-mutedBrown">
-              Verified receipts progression across the last 5 operating months
+              Verified receipts progression across operating months
             </p>
           </div>
           <span className="rounded bg-gold/15 px-2.5 py-1 text-[11px] font-semibold text-gold-deep uppercase">
-            5 Months
+            {monthlyList.length} Months
           </span>
         </div>
 
         {/* Visual Bar Progression */}
         <div className="mt-8">
           <div className="flex h-60 items-end gap-4 sm:gap-8 border-b border-charcoal/10 pb-2">
-            {reports.monthlyBreakdown.map((m) => {
-              const heightPercent = Math.round((m.revenue / maxMonthRev) * 100)
+            {monthlyList.map((m) => {
+              const heightPercent = Math.round(((m.revenue || 0) / maxMonthRev) * 100)
               return (
                 <div key={m.month} className="group relative flex flex-1 flex-col items-center h-full justify-end">
                   {/* Tooltip */}
                   <div className="absolute -top-12 opacity-0 group-hover:opacity-100 transition-opacity bg-charcoal text-ivory text-[11px] py-1 px-2.5 rounded shadow-md pointer-events-none whitespace-nowrap z-10 text-center">
-                    <p className="font-semibold">{money(m.revenue)}</p>
-                    <p className="text-[9px] text-taupe">{m.bookings} bookings</p>
+                    <p className="font-semibold">{money(m.revenue || 0)}</p>
+                    <p className="text-[9px] text-taupe">{m.bookings || 0} bookings</p>
                   </div>
 
                   {/* Gradient bar */}
@@ -131,29 +141,33 @@ export default function AdminReports() {
           Distribution of scheduled appointments across salon artists
         </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {reports.staffWorkload.map((sw) => (
-            <div key={sw.staffName} className="rounded-xl border border-charcoal/10 p-4 bg-ivory/40">
-              <div className="flex items-center gap-2">
-                <Users size={16} className="text-gold-deep" />
-                <h4 className="font-display text-lg font-medium text-charcoal">{sw.staffName}</h4>
-              </div>
-              <p className="text-[11px] text-mutedBrown mt-0.5">{sw.role}</p>
+        {staffWorkloadList.length === 0 ? (
+          <p className="text-xs text-mutedBrown italic py-4">No staff workload data currently available.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {staffWorkloadList.map((sw) => (
+              <div key={sw.staffName || sw.name || sw.id} className="rounded-xl border border-charcoal/10 p-4 bg-ivory/40">
+                <div className="flex items-center gap-2">
+                  <Users size={16} className="text-gold-deep" />
+                  <h4 className="font-display text-lg font-medium text-charcoal">{sw.staffName || sw.name}</h4>
+                </div>
+                <p className="text-[11px] text-mutedBrown mt-0.5">{sw.role || 'Stylist'}</p>
 
-              <div className="mt-4 pt-3 border-t border-charcoal/10 flex items-baseline justify-between">
-                <span className="text-xs text-mutedBrown">Appointments:</span>
-                <span className="font-display text-2xl font-semibold text-charcoal">
-                  {sw.appointmentCount}
-                </span>
+                <div className="mt-4 pt-3 border-t border-charcoal/10 flex items-baseline justify-between">
+                  <span className="text-xs text-mutedBrown">Appointments:</span>
+                  <span className="font-display text-2xl font-semibold text-charcoal">
+                    {sw.appointmentCount ?? sw.appointments ?? 0}
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Academic PBL Assignment Note */}
+      {/* Analytics Architecture Note */}
       <div className="rounded-xl border border-charcoal/10 bg-ivory p-4 text-xs font-body text-mutedBrown">
-        <p><strong>PBL Note:</strong> In Phase 1, analytics are derived dynamically from structured mock datasets and client test bookings. In Phase 2, these aggregations will execute directly in MongoDB Atlas using Mongoose aggregation pipelines.</p>
+        <p><strong>Note:</strong> Performance metrics are calculated live across registered customer appointments, verified checkout receipts, and assigned salon team specialists.</p>
       </div>
 
     </div>
